@@ -97,7 +97,49 @@ fn matchPattern(referenceExpression: &Expression, providedExpression: &Expressio
 impl AxiomEquation {
 
     fn useAxiom(&self, providedExpression: &Expression) -> Expression {
-        todo!( );
+        if let Some(bindings)= matchPattern(&self.left, providedExpression) {
+
+            fn performReplacements(bindings: &HashMap<String, Expression>, axiomRHS: &Expression) -> Expression {
+                match axiomRHS {
+
+                    symbol(name) => {
+                        if let Some(replacementSymbol)= bindings.get(name) {
+                            return replacementSymbol.clone( );
+                        }
+
+                        else { return axiomRHS.clone( ); }
+                    },
+
+                    operation(referenceOperationName, referenceArguments) => {
+                        let mut argumentsWithReplacements= Vec::new( );
+
+                        for argument in referenceArguments {
+                            argumentsWithReplacements.push(performReplacements(bindings, argument));
+                        }
+
+                        return operation(referenceOperationName.clone( ), argumentsWithReplacements);
+                    }
+                }
+            }
+
+            return performReplacements(&bindings, &self.right);
+        }
+
+        else {
+            match providedExpression {
+                symbol(_) => providedExpression.clone( ),
+
+                operation(operationName, operationArguments) => {
+                    let mut evaluatedArguments= Vec::new( );
+
+                    for argument in operationArguments {
+                        evaluatedArguments.push(self.useAxiom(argument));
+                    }
+
+                    return operation(operationName.clone( ), evaluatedArguments);
+                }
+            }
+        }
     }
 }
 
@@ -137,7 +179,7 @@ impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
 }
 
 fn main( ) {
-    // TODO: create lexer
+    // TODO: creating the replacement engine
 
     for token in Lexer::constructor("swap(pair(a, b))".chars( )) {
         println!("{:?}", token);
