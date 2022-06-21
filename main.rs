@@ -3,9 +3,11 @@
 #![allow(dead_code)]
 #![allow(unused_parens)]
 #![allow(unused_variables)]
+#![allow(unused_must_use)]
 
 use core::fmt;
 use std::collections::HashMap;
+use Expression::*;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Expression {
@@ -18,9 +20,9 @@ impl fmt::Display for Expression {
 
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expression::symbol(name) => write!(formatter, "{ }", name),
+            symbol(name) => write!(formatter, "{ }", name),
 
-            Expression::operation(name, arguments) => {
+            operation(name, arguments) => {
                 write!(formatter, "{ }(", name);
 
                 for (index, argument) in arguments.iter( ).enumerate( ) {
@@ -49,18 +51,9 @@ impl fmt::Display for AxiomEquation {
     }
 }
 
-impl AxiomEquation {
-
-    fn useAxiomEquationForExpression(&self, expression: Expression) -> Expression {
-        todo!( );
-    }
-}
-
 fn matchPattern(referenceExpression: &Expression, providedExpression: &Expression) -> Option<HashMap<String, Expression>> {
 
     fn recursiveHelper(referenceExpression: &Expression, providedExpression: &Expression, bindings: &mut HashMap<String, Expression>) -> bool {
-        use Expression::*;
-
         match (referenceExpression, providedExpression) {
 
             (symbol(name), _) => {
@@ -68,9 +61,11 @@ fn matchPattern(referenceExpression: &Expression, providedExpression: &Expressio
                     return existingSymbolValue == providedExpression;
                 }
 
-                else { bindings.insert(name.clone( ), providedExpression.clone( )); }
+                else {
+                    bindings.insert(name.clone( ), providedExpression.clone( ));
 
-                return true;
+                    return true;
+                }
             },
     
             (operation(referenceExpressionName, referenceExpressionArguments), operation(providedExpressionName, providedExpressionArguments)) => {
@@ -88,7 +83,7 @@ fn matchPattern(referenceExpression: &Expression, providedExpression: &Expressio
                 else { return false; }
             },
 
-            _ => { return false; }
+            _ => false
         }
     }
 
@@ -99,41 +94,52 @@ fn matchPattern(referenceExpression: &Expression, providedExpression: &Expressio
     else { return None; }
 }
 
-fn main( ) {
-    use Expression::*;
+impl AxiomEquation {
 
-    // TODO: implement pattern matching
-
-    let swapOperation= AxiomEquation {
-
-        left: operation(
-            String::from("swap"), vec![ operation(
-                String::from("pair"), vec![ symbol(String::from("a")), symbol(String::from("b")) ]
-            )
-        ]),
-        right: operation(String::from("pair"), vec![ symbol(String::from("b")), symbol(String::from("a")) ])
-    };
-
-    let referenceExpression= swapOperation.left;
-
-    println!("{ }", referenceExpression);
-
-    let providedExpression= operation(String::from("swap"), vec![
-        operation(String::from("pair"), vec![
-            operation(String::from("f"), vec![ symbol(String::from("g")) ]),
-            operation(String::from("f"), vec![ symbol(String::from("h")) ])
-        ])
-    ]);
-
-    println!("{ }", providedExpression);
-
-    if let Some(bindings)= matchPattern(&referenceExpression, &providedExpression) {
-        println!("pattern match successfull ! showing bindings : ");
-
-        for (key, value) in bindings.iter( ) {
-            println!("{ } : { }", key, value);
-        }
+    fn useAxiom(&self, providedExpression: &Expression) -> Expression {
+        todo!( );
     }
+}
 
-    else { println!("pattern match unsuccessfull"); }
+#[derive(Debug)]
+enum TokenCategories {
+
+    symbol,
+    openParanthesis,
+    closeParanthesis,
+    comma,
+    equals
+}
+
+#[derive(Debug)]
+struct Token {
+
+    category: TokenCategories,
+    asString: String
+}
+
+struct Lexer<CharactersIterator: Iterator<Item= char>> {
+    charactersIterator: CharactersIterator
+}
+
+impl<CharactersIterator: Iterator<Item = char>> Iterator for Lexer<CharactersIterator> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        todo!( );
+    }
+}
+
+impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
+    fn constructor(charactersIterator: CharactersIterator) -> Self {
+        return Lexer { charactersIterator: charactersIterator };
+    }
+}
+
+fn main( ) {
+    // TODO: create lexer
+
+    for token in Lexer::constructor("swap(pair(a, b))".chars( )) {
+        println!("{:?}", token);
+    }
 }
