@@ -148,7 +148,7 @@ impl AxiomEquation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum TokenCategories {
 
     symbol,
@@ -168,6 +168,12 @@ struct Token {
 
 struct Lexer<CharactersIterator: Iterator<Item= char>> {
     charactersIterator: Peekable<CharactersIterator>
+}
+
+impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
+    fn constructor(charactersIterator: CharactersIterator) -> Self {
+        return Lexer { charactersIterator: charactersIterator.peekable( ) };
+    }
 }
 
 impl<CharactersIterator: Iterator<Item = char>> Iterator for Lexer<CharactersIterator> {
@@ -209,10 +215,41 @@ impl<CharactersIterator: Iterator<Item = char>> Iterator for Lexer<CharactersIte
     }
 }
 
-impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
-    fn constructor(charactersIterator: CharactersIterator) -> Self {
-        return Lexer { charactersIterator: charactersIterator.peekable( ) };
+fn generateExpression(lexer: &mut Peekable<impl Iterator<Item = Token>>) -> Expression {
+    if let Some(token)= lexer.next( ) {
+        match token.category {
+
+            TokenCategories::symbol => {
+
+                if let Some(_)= lexer.next_if(|token| { return token.category == TokenCategories::openParanthesis; }) {
+                    let mut arguments= Vec::new( );
+
+                    //* for f( )
+                    if let Some(_)= lexer.next_if(|token| { return token.category == TokenCategories::closeParanthesis; }) {
+                        return operation(token.asString, arguments);
+                    }
+
+                    arguments.push(generateExpression(lexer));
+
+                    while let Some(_)= lexer.next_if(|token| { return token.category == TokenCategories::comma; }) {
+                        arguments.push(generateExpression(lexer));
+                    }
+
+                    if lexer.next_if(|token| { return token.category == TokenCategories::closeParanthesis; }).is_none( ) { todo!( ); }
+
+                    return operation(token.asString, arguments);
+                }
+
+                else { return symbol(token.asString); }
+            }
+
+            //* handle unknown token
+            _ => todo!( )
+        }
     }
+
+    //* handle end of file
+    else { todo!( ); }
 }
 
 macro_rules! operationArguments {
@@ -256,9 +293,17 @@ macro_rules! expression {
 }
 
 fn main( ) {
-    // TODO: lexing tokens
+    // TODO: generate expression from lexed tokens
 
-    let lexedTokens: Vec<Token>= Lexer::constructor("swap(pair(a, b)) = pair(b, a)".chars( )).collect( );
+    let swapAxiom= AxiomEquation {
 
-    println!("{:?}", lexedTokens);
+        left: expression!(swap(pair(a, b))),
+        right: expression!(pair(b, a))
+    };
+
+    let sourcecode= "swap(pair(a, b))";
+
+    let mut lexer= Lexer::constructor(sourcecode.chars( )).peekable( );
+
+    println!("{ }", swapAxiom.useAxiom(&generateExpression(&mut lexer)));
 }
