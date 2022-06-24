@@ -7,7 +7,7 @@
 #![allow(unused_macros)]
 
 use core::fmt;
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::Peekable};
 use Expression::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -152,10 +152,11 @@ impl AxiomEquation {
 enum TokenCategories {
 
     symbol,
+
     openParanthesis,
     closeParanthesis,
-    comma,
-    equals
+    equals,
+    comma
 }
 
 #[derive(Debug)]
@@ -166,20 +167,51 @@ struct Token {
 }
 
 struct Lexer<CharactersIterator: Iterator<Item= char>> {
-    charactersIterator: CharactersIterator
+    charactersIterator: Peekable<CharactersIterator>
 }
 
 impl<CharactersIterator: Iterator<Item = char>> Iterator for Lexer<CharactersIterator> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        todo!( );
+        if let Some(character)= self.charactersIterator.next( ) {
+
+            //* ignoring whitespaces
+            while let Some(whitespaceCharacter)= self.charactersIterator.next_if(|character| { return character.is_whitespace( ); }) { }
+
+            let mut asString= String::new( );
+
+            asString.push(character);
+
+            match(character) {
+
+                '(' => Some(Token { category: TokenCategories::openParanthesis, asString }),
+
+                ')' => Some(Token { category: TokenCategories::closeParanthesis, asString }),
+
+                '=' => Some(Token { category: TokenCategories::equals, asString }),
+
+                ',' => Some(Token { category: TokenCategories::comma, asString }),
+
+                _ => {
+                    if(! character.is_alphanumeric( )) { todo!( ); }
+
+                    while let Some(character)= self.charactersIterator.next_if(|character| { return character.is_alphanumeric( ); }) {
+                        asString.push(character);
+                    }
+
+                    return Some(Token { category: TokenCategories::symbol, asString });
+                }
+            }
+        }
+
+        else { return None; }
     }
 }
 
 impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
     fn constructor(charactersIterator: CharactersIterator) -> Self {
-        return Lexer { charactersIterator: charactersIterator };
+        return Lexer { charactersIterator: charactersIterator.peekable( ) };
     }
 }
 
@@ -224,13 +256,9 @@ macro_rules! expression {
 }
 
 fn main( ) {
-    // TODO: introducing custom macros
+    // TODO: lexing tokens
 
-    let swapAxiom= AxiomEquation {
+    let lexedTokens: Vec<Token>= Lexer::constructor("swap(pair(a, b)) = pair(b, a)".chars( )).collect( );
 
-        left: expression!(swap(pair(a, b))),
-        right: expression!(pair(b, a))
-    };
-
-    println!("{ }", swapAxiom);
+    println!("{:?}", lexedTokens);
 }
