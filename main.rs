@@ -4,6 +4,7 @@
 #![allow(unused_parens)]
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
+#![allow(unused_macros)]
 
 use core::fmt;
 use std::collections::HashMap;
@@ -25,10 +26,14 @@ impl fmt::Display for Expression {
             operation(name, arguments) => {
                 write!(formatter, "{ }(", name);
 
-                for (index, argument) in arguments.iter( ).enumerate( ) {
-                    if(index > 0) { write!(formatter, ", "); }
+                if(arguments.len( ) == 0) { write!(formatter, " "); }
 
-                    write!(formatter, "{ }", argument);
+                else {
+                    for (index, argument) in arguments.iter( ).enumerate( ) {
+                        if(index > 0) { write!(formatter, ", "); }
+    
+                        write!(formatter, "{ }", argument);
+                    }
                 }
 
                 return write!(formatter, ")");
@@ -178,10 +183,54 @@ impl<CharactersIterator: Iterator<Item = char>> Lexer<CharactersIterator> {
     }
 }
 
-fn main( ) {
-    // TODO: creating the replacement engine
+macro_rules! operationArguments {
 
-    for token in Lexer::constructor("swap(pair(a, b))".chars( )) {
-        println!("{:?}", token);
+    //* for ( ) of f( )
+    ( ) => { vec![ ] };
+
+    //* for (x) of f(x)
+    ($name: ident) => { vec![expression!($name)] };
+
+    //* for (x, y) of f(x, y) or f(x, y,)
+    ($name: ident, $($remainingArguments:tt)*) => {
+        {
+            let mut replacedArguments= vec![ expression!($name) ];
+
+            replacedArguments.append(&mut operationArguments!($($remainingArguments)*));
+
+            replacedArguments
+        }
+    };
+
+    //* for g(x) of f(g(x))
+    ($name: ident($($arguments: tt)*)) => { vec![ expression!($name($($arguments)*)) ] };
+
+    //* for (g(x), h(x)) of f(g(x), h(x))
+    ($name: ident($($nestedArguments: tt)*), $($remainingArguments: tt)*) => {
+        {
+            let mut replacedArguments= vec![ expression!($name($($nestedArguments)*)) ];
+
+            replacedArguments.append(&mut operationArguments!($($remainingArguments)*));
+
+            replacedArguments
+        } println!("{ }", expression!(swap(pair(swap(pair(a, b)), c))));
     }
+}
+
+macro_rules! expression {
+    ($name: ident) => { symbol(stringify!($name).to_string( )) };
+
+    ($name: ident($($arguments:tt)*)) => { operation(stringify!($name).to_string( ), operationArguments!($($arguments)*) )};
+}
+
+fn main( ) {
+    // TODO: introducing custom macros
+
+    let swapAxiom= AxiomEquation {
+
+        left: expression!(swap(pair(a, b))),
+        right: expression!(pair(b, a))
+    };
+
+    println!("{ }", swapAxiom);
 }
