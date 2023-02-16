@@ -146,31 +146,59 @@ fn performPatternMatching(pattern: &Expression, reference: &Expression) -> Optio
     return None }
 }
 
+enum TokenTypes {
+
+    Symbol(String),
+    OpenParanthesis,
+    CloseParanthesis,
+    Comma,
+    Equals
+}
+
+struct Token {
+    _type: TokenTypes,
+    asString: String
+}
+
+macro_rules! symbol {
+    ($name: ident) => {
+        Symbol(stringify!($name).to_string( ))
+    };
+}
+
+macro_rules! functionInvokation {
+
+    ($name: ident) => {
+        FunctionInvocation(stringify!($name).to_string( ), vec![ ])
+    };
+
+    (
+        $name: ident,
+        $($arguments: expr),* // means - collection of values (value is of type Expression) separated by commas
+    ) => {
+        FunctionInvocation(stringify!($name).to_string( ), vec![$($arguments),*])
+    };
+}
+
 fn main( ) {
 
     // the rule - swap(pair(a, b))= pair(b, a)
     let swapRule= Rule {
-        head: FunctionInvocation("swap".to_string( ),
-                                        vec![FunctionInvocation("pair".to_string( ),
-                                                                    vec![Symbol("a".to_string( )), Symbol("b".to_string( ))])]),
-        body: FunctionInvocation("pair".to_string( ),
-                                        vec![Symbol("b".to_string( )), Symbol("a".to_string( ))])
+        head: functionInvokation!(swap,
+                                        functionInvokation!(pair, symbol!(a), symbol!(b))),
+        body: functionInvokation!(pair, symbol!(b), symbol!(a))
     };
 
     // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    let expression= FunctionInvocation("foo".to_string( ),
-                                            vec![
-                                                FunctionInvocation("swap".to_string( ),
-                                                                        vec![FunctionInvocation("pair".to_string( ),
-                                                                                                    vec![
-                                                                                                        FunctionInvocation("f".to_string( ), vec![Symbol("a".to_string( ))]),
-                                                                                                        FunctionInvocation("g".to_string( ), vec![Symbol("b".to_string( ))])])]),
-                                                FunctionInvocation("swap".to_string( ),
-                                                                        vec![FunctionInvocation("pair".to_string( ),
-                                                                                                    vec![
-                                                                                                        FunctionInvocation("q".to_string( ), vec![Symbol("c".to_string( ))]),
-                                                                                                        FunctionInvocation("z".to_string( ), vec![Symbol("d".to_string( ))])])])
-                                            ]);
+    let expression= functionInvokation!(foo,
+                                            functionInvokation!(swap,
+                                                                    functionInvokation!(pair,
+                                                                                            functionInvokation!(f, symbol!(a)),
+                                                                                            functionInvokation!(g, symbol!(b)))),
+                                            functionInvokation!(swap,
+                                                                    functionInvokation!(pair,
+                                                                                            functionInvokation!(q, symbol!(c)),
+                                                                                            functionInvokation!(z, symbol!(d)))));
 
     println!("rule - {}", swapRule);
 
