@@ -121,13 +121,13 @@ fn performPatternMatching(pattern: &Expression, reference: &Expression) -> Optio
                 }
             },
     
-            (FunctionInvocation(nameInPattern, argumentsInPattern), FunctionInvocation(nameInReference, argumentsInReference)) => {
+            (FunctionInvocation(nameInReference, argumentsInReference), FunctionInvocation(nameInPattern, argumentsInPattern)) => {
 
                 if nameInPattern == nameInReference && argumentsInPattern.len( ) == argumentsInReference.len( ) {
 
                     for i in 0..argumentsInPattern.len( ) {
                         if !recursiveHelperForPatternMatching(&argumentsInPattern[i], &argumentsInReference[i], bindings) {
-                            return false; }
+                            return false;}
                     }
 
                     return true;
@@ -157,6 +157,7 @@ fn main( ) {
                                         vec![Symbol("b".to_string( )), Symbol("a".to_string( ))])
     };
 
+    // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
     let expression= FunctionInvocation("foo".to_string( ),
                                             vec![
                                                 FunctionInvocation("swap".to_string( ),
