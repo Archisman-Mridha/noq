@@ -226,6 +226,9 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
     type Item= Token;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // ignoring whitespaces
+        while let Some(_)= self.sourcecode.next_if(|character| character.is_whitespace( )) { }
+
         if let Some(character)= self.sourcecode.next( ) {
 
             let mut asString= String::new( );
@@ -254,6 +257,10 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
                 }),
 
                 _ => {
+                    if !character.is_alphanumeric( ) {
+                        todo!("ERROR: unexpexted token `{}`", character)
+                    }
+
                     while let Some(character)= self.sourcecode.next_if(|character| character.is_alphanumeric( )) {
                         asString.push(character)
                     }
@@ -287,11 +294,11 @@ fn main( ) {
     // println!("original expression - {}", expression);
     // println!("transformed expression - {}", swapRule.apply(&expression));
 
-    let lexer= Lexer::constructLexerForSourcecode(
+    let tokens: Vec<Token>= Lexer::constructLexerForSourcecode(
         "swap(pair(a, b))".chars( )
-    );
+    ).collect( );
 
-    for token in lexer {
+    for token in tokens {
         println!("{:?}", token);
     }
 }
