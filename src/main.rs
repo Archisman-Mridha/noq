@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::{fmt, collections::HashMap};
+use std::{fmt, collections::HashMap, iter::Peekable};
 use Expression::*;
 
 // the clone trait allows us to perform deep copies
@@ -146,20 +146,6 @@ fn performPatternMatching(pattern: &Expression, reference: &Expression) -> Optio
     return None }
 }
 
-enum TokenTypes {
-
-    Symbol(String),
-    OpenParanthesis,
-    CloseParanthesis,
-    Comma,
-    Equals
-}
-
-struct Token {
-    _type: TokenTypes,
-    asString: String
-}
-
 macro_rules! functionArguments {
 
     // function( )
@@ -207,21 +193,105 @@ macro_rules! expression {
     };
 }
 
+#[derive(Debug)]
+enum TokenTypes {
+
+    Symbol(String),
+    OpenParanthesis,
+    CloseParanthesis,
+    Comma,
+    Equals
+}
+
+#[derive(Debug)]
+struct Token {
+    _type: TokenTypes,
+    asString: String
+}
+
+//* sourcecode is an iterator where the item type is 'char'
+//* and lexer is an iterator over the parsed tokens
+struct Lexer<Sourcecode: Iterator<Item= char>> {
+    sourcecode: Peekable<Sourcecode>
+}
+
+impl<Sourcecode: Iterator<Item= char>> Lexer<Sourcecode> {
+
+    fn constructLexerForSourcecode(sourcecode: Sourcecode) -> Self {
+        return Self { sourcecode: sourcecode.peekable( ) };
+    }
+}
+
+impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
+    type Item= Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(character)= self.sourcecode.next( ) {
+
+            let mut asString= String::new( );
+            asString.push(character);
+
+            match character {
+
+                '(' => Some(Token {
+                    _type: TokenTypes::OpenParanthesis,
+                    asString
+                }),
+
+                ')' => Some(Token {
+                    _type: TokenTypes::CloseParanthesis,
+                    asString
+                }),
+
+                ',' => Some(Token {
+                    _type: TokenTypes::Comma,
+                    asString
+                }),
+
+                '=' => Some(Token {
+                    _type: TokenTypes::Equals,
+                    asString
+                }),
+
+                _ => {
+                    while let Some(character)= self.sourcecode.next_if(|character| character.is_alphanumeric( )) {
+                        asString.push(character)
+                    }
+
+                    return Some(Token {
+                        _type: TokenTypes::Symbol(asString.clone( )),
+                        asString
+                    });
+                }
+            }
+
+        } else { return None; }
+    }
+}
+
 fn main( ) {
 
-    // the rule - swap(pair(a, b))= pair(b, a)
-    let swapRule= Rule {
-        head: expression!(swap(pair(a, b))),
-        body: expression!(pair(b, a))
-    };
+    // // the rule - swap(pair(a, b))= pair(b, a)
+    // let swapRule= Rule {
+    //     head: expression!(swap(pair(a, b))),
+    //     body: expression!(pair(b, a))
+    // };
 
-    // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    let expression= expression!{
-        foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    };
+    // // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
+    // let expression= expression!{
+    //     foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
+    // };
 
-    println!("rule - {}", swapRule);
+    // println!("rule - {}", swapRule);
 
-    println!("original expression - {}", expression);
-    println!("transformed expression - {}", swapRule.apply(&expression));
+    // println!("original expression - {}", expression);
+    // println!("transformed expression - {}", swapRule.apply(&expression));
+
+    let lexer= Lexer::constructLexerForSourcecode(
+        "swap(pair(a, b))".chars( )
+    );
+
+    for token in lexer {
+        println!("{:?}", token);
+    }
 }
