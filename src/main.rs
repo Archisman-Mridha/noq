@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::{fmt::{self}, collections::HashMap, iter::Peekable};
+use std::{fmt::{self}, collections::HashMap, iter::Peekable, io::{stdin, stdout, Write}};
 use Expression::*;
 
 // the clone trait allows us to perform deep copies
@@ -316,13 +316,23 @@ fn main( ) {
         head: expression!(swap(pair(a, b))),
         body: expression!(pair(b, a))
     };
-    println!("rule - {}", swapRule);
+    println!("predefined swap rule - {}", swapRule);
 
-    let lexer= Lexer::constructLexerForSourcecode(
-        "foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))".chars( ));
-    let parsedExpression= Expression::parse(&mut lexer.peekable( ));
-    println!("original expression - {}", parsedExpression);
+    let mut input= String::new( );
+    let quitREPL= false;
 
-    let transformedExpression= swapRule.apply(&parsedExpression);
-    println!("transformed expression - {}", transformedExpression);
+    while !quitREPL {
+        input.clear( );
+        print!("> ");
+        stdout( ).flush( );
+
+        stdin( ).read_line(&mut input);
+
+        let lexer= Lexer::constructLexerForSourcecode(input.chars( ));
+        let parsedExpression= Expression::parse(&mut lexer.peekable( ));
+        println!("  original expression - {}", parsedExpression);
+
+        let transformedExpression= swapRule.apply(&parsedExpression);
+        println!("  transformed expression - {}", transformedExpression);
+    }
 }
