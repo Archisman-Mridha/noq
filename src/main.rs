@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use std::{fmt, collections::HashMap, iter::Peekable};
+use std::{fmt::{self}, collections::HashMap, iter::Peekable};
 use Expression::*;
 
 // the clone trait allows us to perform deep copies
@@ -15,6 +15,39 @@ enum Expression {
 
     // TODO: learn about `Vec` in detail
     FunctionInvocation(String, Vec<Expression>)
+}
+
+impl Expression {
+    fn parse(lexer: &mut Peekable<impl Iterator<Item= Token>>) -> Self {
+        if let Some(token)= lexer.next( ) {
+            match token._type {
+
+                TokenTypes::Symbol(_) => {
+                    if let Some(_)= lexer.next_if(|token| token._type == TokenTypes::OpenParanthesis) {
+                        let mut parsedArguments= Vec::new( );
+
+                        // in case of no arguments
+                        if let Some(_)= lexer.next_if(|token| token._type == TokenTypes::CloseParanthesis) {
+                            return Expression::FunctionInvocation(token.asString, parsedArguments); }
+
+                        parsedArguments.push(Expression::parse(lexer));
+                        while let Some(_)= lexer.next_if(|token| token._type == TokenTypes::Comma) {
+                            parsedArguments.push(Expression::parse(lexer));
+                        }
+
+                        if lexer.next_if(|token| token._type == TokenTypes::CloseParanthesis).is_none( ) {
+                            todo!("ERROR: expected close paranthesis for function invocation") }
+
+                        return Expression::FunctionInvocation(token.asString, parsedArguments);
+    
+                    } else { return Expression::Symbol(token.asString); }
+                }
+
+                _ => todo!("ERROR: encountered unexpected token in parser")
+            }
+
+        } else { todo!("ERROR: no tokens left in lexer to parse") }
+    }
 }
 
 // fmt::Display is a trait. traits are similar to interfaces
@@ -193,7 +226,7 @@ macro_rules! expression {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum TokenTypes {
 
     Symbol(String),
@@ -203,7 +236,7 @@ enum TokenTypes {
     Equals
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Token {
     _type: TokenTypes,
     asString: String
@@ -278,27 +311,18 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
 
 fn main( ) {
 
-    // // the rule - swap(pair(a, b))= pair(b, a)
-    // let swapRule= Rule {
-    //     head: expression!(swap(pair(a, b))),
-    //     body: expression!(pair(b, a))
-    // };
+    // the rule - swap(pair(a, b))= pair(b, a)
+    let swapRule= Rule {
+        head: expression!(swap(pair(a, b))),
+        body: expression!(pair(b, a))
+    };
+    println!("rule - {}", swapRule);
 
-    // // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    // let expression= expression!{
-    //     foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    // };
+    let lexer= Lexer::constructLexerForSourcecode(
+        "foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))".chars( ));
+    let parsedExpression= Expression::parse(&mut lexer.peekable( ));
+    println!("original expression - {}", parsedExpression);
 
-    // println!("rule - {}", swapRule);
-
-    // println!("original expression - {}", expression);
-    // println!("transformed expression - {}", swapRule.apply(&expression));
-
-    let tokens: Vec<Token>= Lexer::constructLexerForSourcecode(
-        "swap(pair(a, b))".chars( )
-    ).collect( );
-
-    for token in tokens {
-        println!("{:?}", token);
-    }
+    let transformedExpression= swapRule.apply(&parsedExpression);
+    println!("transformed expression - {}", transformedExpression);
 }
