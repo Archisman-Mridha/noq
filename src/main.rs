@@ -160,23 +160,50 @@ struct Token {
     asString: String
 }
 
-macro_rules! symbol {
+macro_rules! functionArguments {
+
+    // function( )
+    ( ) => { vec![ ] };
+
+    //function(a)
+    ($name:ident) => { vec![expression!($name)] };
+
+    // function(a, b, c)
+    ($firstArgument: ident, $($remainingArguments:tt)*) => {
+        {
+            let mut parsedArguments= vec![expression!($firstArgument)];
+            parsedArguments.append(&mut functionArguments!($($remainingArguments)*));
+
+            parsedArguments
+        }
+    };
+
+    // f(g(a))
+    ($name: ident($($arguments: tt)*)) => {
+        vec![expression!($name($($arguments)*))]
+    };
+
+    // f(g(a), h(b), c)
+    ($name: ident($($arguments: tt)*), $($remainingArguments: tt)*) => {
+        {
+            let mut parsedArguments= vec![expression!($name($($arguments)*))];
+            parsedArguments.append(&mut functionArguments!($($remainingArguments)*));
+
+            parsedArguments
+        }
+    }
+}
+
+macro_rules! expression {
+
     ($name: ident) => {
         Symbol(stringify!($name).to_string( ))
     };
-}
 
-macro_rules! functionInvokation {
-
-    ($name: ident) => {
-        FunctionInvocation(stringify!($name).to_string( ), vec![ ])
-    };
-
-    (
-        $name: ident,
-        $($arguments: expr),* // means - collection of values (value is of type Expression) separated by commas
-    ) => {
-        FunctionInvocation(stringify!($name).to_string( ), vec![$($arguments),*])
+    ($name:ident(
+        $($arguments:tt)* // unparsed function arguments
+    )) => {
+        FunctionInvocation(stringify!($name).to_string( ), functionArguments!($($arguments)*))
     };
 }
 
@@ -184,21 +211,14 @@ fn main( ) {
 
     // the rule - swap(pair(a, b))= pair(b, a)
     let swapRule= Rule {
-        head: functionInvokation!(swap,
-                                        functionInvokation!(pair, symbol!(a), symbol!(b))),
-        body: functionInvokation!(pair, symbol!(b), symbol!(a))
+        head: expression!(swap(pair(a, b))),
+        body: expression!(pair(b, a))
     };
 
     // the expression - foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
-    let expression= functionInvokation!(foo,
-                                            functionInvokation!(swap,
-                                                                    functionInvokation!(pair,
-                                                                                            functionInvokation!(f, symbol!(a)),
-                                                                                            functionInvokation!(g, symbol!(b)))),
-                                            functionInvokation!(swap,
-                                                                    functionInvokation!(pair,
-                                                                                            functionInvokation!(q, symbol!(c)),
-                                                                                            functionInvokation!(z, symbol!(d)))));
+    let expression= expression!{
+        foo(swap(pair(f(a), g(b))), swap(pair(q(c), z(d))))
+    };
 
     println!("rule - {}", swapRule);
 
