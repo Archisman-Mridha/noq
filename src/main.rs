@@ -336,3 +336,28 @@ fn main( ) {
         println!("  transformed expression - {}", transformedExpression);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn testSwapRule( ) {
+
+        // the rule - swap(pair(a, b))= pair(b, a)
+        let swapRule= Rule {
+            head: expression!(swap(pair(a, b))),
+            body: expression!(pair(b, a))
+        };
+
+        let sourcecode= "foo(swap(pair(f(a), g(b))), swap(pair(p(r), q(s))))";
+
+        let lexer= Lexer::constructLexerForSourcecode(sourcecode.chars( ));
+        let parsedExpression= Expression::parse(&mut lexer.peekable( ));
+
+        let expectedTransformedExpression= expression!(foo(pair(g(b), f(a)), pair(q(s), p(r))));
+        let transformedExpression= swapRule.apply(&parsedExpression);
+
+        assert_eq!(expectedTransformedExpression, transformedExpression);
+    }
+}
