@@ -4,7 +4,7 @@
 
 mod lexer;
 
-use std::{fmt::{self}, collections::HashMap, iter::Peekable, io::{stdin, stdout, Write}};
+use std::{fmt::{self}, collections::HashMap, iter::Peekable, io::{stdin, stdout, Write, self}, fs, process::exit};
 use Expression::*;
 use lexer::*;
 
@@ -21,32 +21,32 @@ enum Expression {
 }
 
 impl Expression {
-    fn parse(lexer: &mut Peekable<impl Iterator<Item= Token>>) -> Self {
+    fn parse(lexer: &mut Peekable<impl Iterator<Item= Token>>) -> Result<Self, Error> {
         if let Some(token)= lexer.next( ) {
             match token._type {
 
-                TokenTypes::Symbol(_) => {
+                TokenTypes::Symbol => {
                     if let Some(_)= lexer.next_if(|token| token._type == TokenTypes::OpenParanthesis) {
                         let mut parsedArguments= Vec::new( );
 
                         // in case of no arguments
                         if let Some(_)= lexer.next_if(|token| token._type == TokenTypes::CloseParanthesis) {
-                            return Expression::FunctionInvocation(token.asString, parsedArguments); }
+                            return Ok(Expression::FunctionInvocation(token.asString, parsedArguments)); }
 
-                        parsedArguments.push(Expression::parse(lexer));
+                        parsedArguments.push(Expression::parse(lexer)?);
                         while let Some(_)= lexer.next_if(|token| token._type == TokenTypes::Comma) {
-                            parsedArguments.push(Expression::parse(lexer));
+                            parsedArguments.push(Expression::parse(lexer)?);
                         }
 
                         if lexer.next_if(|token| token._type == TokenTypes::CloseParanthesis).is_none( ) {
-                            todo!("ERROR: expected close paranthesis for function invocation") }
+                            return Err(Error::UnexpectedToken(TokenTypes::CloseParanthesis, token)); }
 
-                        return Expression::FunctionInvocation(token.asString, parsedArguments);
+                        return Ok(Expression::FunctionInvocation(token.asString, parsedArguments));
     
-                    } else { return Expression::Symbol(token.asString); }
+                    } else { return Ok(Expression::Symbol(token.asString)); }
                 }
 
-                _ => todo!("ERROR: encountered unexpected token in parser")
+                _ => return Err(Error::UnexpectedToken(TokenTypes::Symbol, token))
             }
 
         } else { todo!("ERROR: no tokens left in lexer to parse") }
@@ -116,6 +116,14 @@ fn applyBindings(bindings: &Bindings, expression: &Expression) -> Expression {
 }
 
 impl Rule {
+    fn parse(lexer: &mut Peekable<impl Iterator<Item= Token>>) -> Result<Rule, Error> {
+        let head= Expression::parse(lexer)?;
+        tokenTypeFilter(lexer, TokenTypes::Equals)?;
+        let body= Expression::parse(lexer)?;
+
+        return Ok(Rule { head, body });
+    }
+
     fn apply(&self, expression: &Expression) -> Expression {
 
         if let Some(bindings)= performPatternMatching(&expression, &self.head) {
@@ -229,32 +237,101 @@ macro_rules! expression {
     };
 }
 
+fn tokenTypeFilter(lexer: &mut Peekable<impl Iterator<Item= Token>>, expectedTokenType: TokenTypes) -> Result<Token, Error> {
+    let token= lexer.next( ).expect("no tokens left to lex");
+
+    if token._type != expectedTokenType {
+        return Err(Error::UnexpectedToken(expectedTokenType, token));
+    }
+
+    return Ok(token);
+}
+
+fn parseRulesFromFile(filePath: &str) -> Result<HashMap<String, Rule>, Error> {
+    let mut rules= HashMap::new( );
+
+    let sourcecode= fs::read_to_string(filePath)
+        .map_err(|error| Error::IOError(error))?;
+    let mut lexer= Lexer::constructLexerForSourcecode(sourcecode.chars( ));
+    lexer.setFilePath(filePath);
+    let mut lexer= lexer.peekable( );
+
+    while let Some(token)= lexer.peek( ) {
+        if token._type == TokenTypes::EOF { break; }
+
+        tokenTypeFilter(&mut lexer, TokenTypes::Rule)?;
+        let ruleName= tokenTypeFilter(&mut lexer, TokenTypes::Symbol)?.asString;
+        let rule= Rule::parse(&mut lexer)?;
+
+        rules.insert(ruleName, rule);
+    }
+
+    return Ok(rules);
+}
+
 fn main( ) {
 
-    // the rule - swap(pair(a, b))= pair(b, a)
+    let defaultRulesFilePath= "rules.default.noq";
+    let defaultRules: HashMap<String, Rule>= match parseRulesFromFile(defaultRulesFilePath) {
+
+        Ok(defaultRules) => {
+            println!("INFO: successfully loaded default rules from {}", defaultRulesFilePath);
+            defaultRules
+        }
+
+        Err(Error::IOError(error)) => {
+            eprintln!("ERROR: could not read file {}, {:?}", defaultRulesFilePath, error);
+            Default::default( )
+        }
+
+        Err(Error::UnexpectedToken(expectedTokenType, actualToken)) => {
+            eprintln!("ERROR: expected {:?} but got {:?} '{}'", expectedTokenType, actualToken._type, actualToken.asString);
+            Default::default( )
+        }
+    };
+
+    println!("INFO: available rules : ");
+    for (defaultRuleName, defaultRule) in defaultRules {
+        println!("INFO: `{}` : {}", defaultRuleName, defaultRule); }
+
     let swapRule= Rule {
         head: expression!(swap(pair(a, b))),
         body: expression!(pair(b, a))
     };
-    println!("predefined swap rule - {}", swapRule);
 
     let mut input= String::new( );
-    let quitREPL= false;
 
-    while !quitREPL {
+    loop {
         input.clear( );
         print!("> ");
-        stdout( ).flush( );
+        stdout( ).flush( ).unwrap( );
 
-        stdin( ).read_line(&mut input);
+        stdin( ).read_line(&mut input).unwrap( );
 
         let lexer= Lexer::constructLexerForSourcecode(input.chars( ));
         let parsedExpression= Expression::parse(&mut lexer.peekable( ));
-        println!("  original expression - {}", parsedExpression);
+        match parsedExpression {
 
-        let transformedExpression= swapRule.apply(&parsedExpression);
-        println!("  transformed expression - {}", transformedExpression);
+            Ok(parsedExpression) => {
+                println!("  original expression - {}", parsedExpression);
+
+                let transformedExpression= swapRule.apply(&parsedExpression);
+                println!("  transformed expression - {}", transformedExpression);
+            },
+
+            Err(Error::UnexpectedToken(expectedTokenType, actualToken)) => {
+                eprintln!("{:>width$}^", "", width= 2 + actualToken.location.columnNumber);
+                eprintln!("ERROR: expected {:?} but got {:?} '{}'", expectedTokenType, actualToken._type, actualToken.asString); },
+
+            _ => todo!("ERROR: unhandled error occured during parsing expression")
+        }
     }
+}
+
+#[derive(Debug)]
+enum Error {
+    UnexpectedToken(TokenTypes, Token),
+    IOError(io::Error)
 }
 
 #[cfg(test)]
@@ -273,7 +350,7 @@ mod tests {
         let sourcecode= "foo(swap(pair(f(a), g(b))), swap(pair(p(r), q(s))))";
 
         let lexer= Lexer::constructLexerForSourcecode(sourcecode.chars( ));
-        let parsedExpression= Expression::parse(&mut lexer.peekable( ));
+        let parsedExpression= Expression::parse(&mut lexer.peekable( )).unwrap( );
 
         let expectedTransformedExpression= expression!(foo(pair(g(b), f(a)), pair(q(s), p(r))));
         let transformedExpression= swapRule.apply(&parsedExpression);

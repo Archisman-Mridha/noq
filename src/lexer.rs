@@ -1,9 +1,9 @@
 use std::{iter::Peekable, fmt};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum TokenTypes {
 
-    Symbol(String),
+    Symbol,
 
     // keywords
     Rule,
@@ -34,7 +34,7 @@ fn getKeywordForString(string: &str) -> Option<TokenTypes> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TokenLocation {
     pub filePath: Option<String>,
 
@@ -49,7 +49,7 @@ impl fmt::Display for TokenLocation {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Token {
     pub _type: TokenTypes,
     pub asString: String,
@@ -91,7 +91,7 @@ impl<Sourcecode: Iterator<Item= char>> Lexer<Sourcecode> {
         };
     }
 
-    pub fn setFilePathForLexer(&mut self, filePath: &str) {
+    pub fn setFilePath(&mut self, filePath: &str) {
         self.filePath= Some(filePath.to_string( ));
     }
 }
@@ -163,7 +163,7 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
                                     location: currentLocation });
                             } else {
                                 return Some(Token {
-                                    _type: TokenTypes::Symbol(asString.clone( )),
+                                    _type: TokenTypes::Symbol,
                                     asString,
                                     location: currentLocation });
                             }
