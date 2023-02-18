@@ -2,8 +2,11 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+mod lexer;
+
 use std::{fmt::{self}, collections::HashMap, iter::Peekable, io::{stdin, stdout, Write}};
 use Expression::*;
+use lexer::*;
 
 // the clone trait allows us to perform deep copies
 #[derive(Debug, Clone, PartialEq)] /*
@@ -224,89 +227,6 @@ macro_rules! expression {
     )) => {
         FunctionInvocation(stringify!($name).to_string( ), functionArguments!($($arguments)*))
     };
-}
-
-#[derive(Debug, PartialEq)]
-enum TokenTypes {
-
-    Symbol(String),
-    OpenParanthesis,
-    CloseParanthesis,
-    Comma,
-    Equals
-}
-
-#[derive(Debug, PartialEq)]
-struct Token {
-    _type: TokenTypes,
-    asString: String
-}
-
-//* sourcecode is an iterator where the item type is 'char'
-//* and lexer is an iterator over the parsed tokens
-struct Lexer<Sourcecode: Iterator<Item= char>> {
-    sourcecode: Peekable<Sourcecode>
-}
-
-impl<Sourcecode: Iterator<Item= char>> Lexer<Sourcecode> {
-
-    fn constructLexerForSourcecode(sourcecode: Sourcecode) -> Self {
-        return Self { sourcecode: sourcecode.peekable( ) };
-    }
-}
-
-impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
-    type Item= Token;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // ignoring whitespaces
-        while let Some(_)= self.sourcecode.next_if(|character| character.is_whitespace( )) { }
-
-        if let Some(character)= self.sourcecode.next( ) {
-
-            let mut asString= String::new( );
-            asString.push(character);
-
-            match character {
-
-                '(' => Some(Token {
-                    _type: TokenTypes::OpenParanthesis,
-                    asString
-                }),
-
-                ')' => Some(Token {
-                    _type: TokenTypes::CloseParanthesis,
-                    asString
-                }),
-
-                ',' => Some(Token {
-                    _type: TokenTypes::Comma,
-                    asString
-                }),
-
-                '=' => Some(Token {
-                    _type: TokenTypes::Equals,
-                    asString
-                }),
-
-                _ => {
-                    if !character.is_alphanumeric( ) {
-                        todo!("ERROR: unexpexted token `{}`", character)
-                    }
-
-                    while let Some(character)= self.sourcecode.next_if(|character| character.is_alphanumeric( )) {
-                        asString.push(character)
-                    }
-
-                    return Some(Token {
-                        _type: TokenTypes::Symbol(asString.clone( )),
-                        asString
-                    });
-                }
-            }
-
-        } else { return None; }
-    }
 }
 
 fn main( ) {
