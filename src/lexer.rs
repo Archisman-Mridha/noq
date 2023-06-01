@@ -121,34 +121,49 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
 
                 match character {
 
-                    '(' => Some(Token {
-                        _type: TokenTypes::OpenParanthesis,
-                        asString,
-                        location: currentLocation }),
+                    '(' => Some(
+                        Token {
+                            _type: TokenTypes::OpenParanthesis,
+                            asString,
+                            location: currentLocation
+                        }
+                    ),
 
-                    ')' => Some(Token {
-                        _type: TokenTypes::CloseParanthesis,
-                        asString,
-                        location: currentLocation }),
+                    ')' => Some(
+                        Token {
+                            _type: TokenTypes::CloseParanthesis,
+                            asString,
+                            location: currentLocation
+                        }
+                    ),
 
-                    ',' => Some(Token {
-                        _type: TokenTypes::Comma,
-                        asString,
-                        location: currentLocation }),
+                    ',' => Some(
+                        Token {
+                            _type: TokenTypes::Comma,
+                            asString,
+                            location: currentLocation
+                        }
+                    ),
 
-                    '=' => Some(Token {
-                        _type: TokenTypes::Equals,
-                        asString,
-                        location: currentLocation }),
+                    '=' => Some(
+                        Token {
+                            _type: TokenTypes::Equals,
+                            asString,
+                            location: currentLocation
+                        }
+                    ),
 
                     _ => {
                         if !character.is_alphanumeric( ) {
                             self.stopLexing= true;
 
-                            return Some(Token {
-                                _type: TokenTypes::Invalid,
-                                asString,
-                                location: currentLocation })
+                            return Some(
+                                Token {
+                                    _type: TokenTypes::Invalid,
+                                    asString,
+                                    location: currentLocation
+                                }
+                            )
                         } else {
 
                             while let Some(character)= self.sourcecode.next_if(|character| character.is_alphanumeric( )) {
@@ -157,15 +172,21 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
                             }
 
                             if let Some(tokenType)= getKeywordForString(&asString) {
-                                return Some(Token {
-                                    _type: tokenType,
-                                    asString,
-                                    location: currentLocation });
+                                return Some(
+                                    Token {
+                                        _type: tokenType,
+                                        asString,
+                                        location: currentLocation
+                                    }
+                                );
                             } else {
-                                return Some(Token {
-                                    _type: TokenTypes::Symbol,
-                                    asString,
-                                    location: currentLocation });
+                                return Some(
+                                    Token {
+                                        _type: TokenTypes::Symbol,
+                                        asString,
+                                        location: currentLocation
+                                    }
+                                );
                             }
                         }
                     }
@@ -175,10 +196,13 @@ impl<Sourcecode: Iterator<Item= char>> Iterator for Lexer<Sourcecode> {
             None => {
                 self.stopLexing= true;
 
-                return Some(Token {
-                    _type: TokenTypes::EOF,
-                    asString: "".to_string( ),
-                    location: currentLocation });
+                return Some(
+                    Token {
+                        _type: TokenTypes::EOF,
+                        asString: "".to_string( ),
+                        location: currentLocation
+                    }
+                );
             }
         }
     }
